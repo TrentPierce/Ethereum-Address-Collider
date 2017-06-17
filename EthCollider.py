@@ -98,9 +98,7 @@ while balance == '0':
 	if 'inter' not in locals():
                 wallets = wallets + 1
 		assert compute_adr(foundprivkeynum) == address
-##		print "\nAddress :  %s \n" % address
 		pvhex = hexa(foundprivkeynum)
-##		print "PrivKey :  %s\n" % pvhex
 		r = requests.get('https://api.etherscan.io/api?module=account&action=balance&address=' + address + '&tag=latest&apikey=V7GSGSMWZ2CZH1B6MBXM84SZ1XG4DXDCW9')
 		r.text
 		data = json.loads(r.text)
@@ -114,14 +112,14 @@ while balance == '0':
 
                         print "PrivKey :  %s\n" % pvhex
                         
-##		privfileexist=False
-##		conf="n"
-##		if os.path.isfile('priv.prv'):
-##			privfileexist=True
-##			conf=raw_input("Enter 'y' to confirm overwriting priv.prv file : ")
-##		if (conf=="y" or not privfileexist):
-##			with open('priv.prv', 'wb') as f:
-##				f.write(pvhex)
-##			print "Private key exported in priv.prv file"
-##			print "Can be imported in geth : 'geth account import priv.prv'\n"
-##
+		        privfileexist=False
+		        conf="n"
+		        if os.path.isfile('priv.prv'):
+			        privfileexist=True
+			        conf=raw_input("Enter 'y' to confirm overwriting priv.prv file : ")
+		        if (conf=="y" or not privfileexist):
+			        with open('priv.prv', 'wb') as f:
+				        f.write(pvhex)
+			        print "Private key exported in priv.prv file"
+			        print "Can be imported in geth : 'geth account import priv.prv'\n"
+
