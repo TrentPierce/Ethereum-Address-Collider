@@ -170,7 +170,7 @@ class Keccak:
     w: word size
     """
 
-    for i in xrange(n_r):
+    for i in range(n_r):
       A = Keccak.Round(A, Keccak.RC[i] % (1 << w), w)
 
     return A
@@ -190,7 +190,7 @@ class Keccak:
 
     # Check the parameter n
     if n % 8 != 0:
-      raise KeccakError.KeccakError("n must be a multiple of 8")
+      raise KeccakError("n must be a multiple of 8")
 
     # Check the length of the provided string
     if len(my_string) % 2 != 0:
@@ -198,7 +198,7 @@ class Keccak:
       #vectors coding)
       my_string += '0'
     if my_string_length > (len(my_string) // 2 * 8):
-      raise KeccakError.KeccakError("the string is too short to contain the number of bits announced")
+      raise KeccakError("the string is too short to contain the number of bits announced")
 
     nr_bytes_filled = my_string_length // 8
     nbr_bits_filled = my_string_length % 8
@@ -232,7 +232,10 @@ class Keccak:
 
     self.last_digest = None
     # Convert the data into a workable format, and add it to the buffer
-    self.buffered_data += arg.encode('hex')
+    if isinstance(arg, bytes):
+        self.buffered_data += arg.hex()
+    else:
+        self.buffered_data += arg.encode('utf-8').hex()
 
     # Absorb any blocks we can:
     if len(self.buffered_data) * 4 >= self.r:
@@ -248,13 +251,13 @@ class Keccak:
         self.buffered_data = self.buffered_data[-extra_bits // 4:]
 
       #Absorbing phase
-      for i in xrange((len(P) * 8 // 2) // self.r):
+      for i in range((len(P) * 8 // 2) // self.r):
         to_convert = P[i * (2 * self.r // 8):(i + 1) * (2 * self.r // 8)] + '00' * (self.c // 8)
         P_i = _convertStrToTable(to_convert, self.w, self.b)
 
         # First apply the XOR to the state + block
-        for y in xrange(5):
-          for x in xrange(5):
+        for y in range(5):
+          for x in range(5):
             self.S[x][y] = self.S[x][y] ^ P_i[x][y]
         # Then apply the block permutation, Keccak-F
         self.S = Keccak.KeccakF(self.S, self.n_r, self.w)
@@ -270,11 +273,11 @@ class Keccak:
 
     # UGLY WARNING
     # Handle bytestring/hexstring conversions
-    M = _build_message_pair(self.buffered_data.decode('hex'))
+    M = _build_message_pair(bytes.fromhex(self.buffered_data))
 
     # First finish the padding and force the final update:
     self.buffered_data = Keccak.pad10star1(M, self.r)
-    self.update('')
+    self.update(b'')
     # UGLY WARNING over
 
     assert len(self.buffered_data) == 0, "Why is there data left in the buffer? %s with length %d" % (self.buffered_data, len(self.buffered_data) * 4)
@@ -290,7 +293,7 @@ class Keccak:
       if outputLength > 0:
         S = KeccakF(S, verbose)
 
-    self.last_digest = Z[:2 * self.n // 8].decode('hex')
+    self.last_digest = bytes.fromhex(Z[:2 * self.n // 8])
     return self.last_digest
 
   def hexdigest(self):
@@ -298,14 +301,14 @@ class Keccak:
 
     This may be used to exchange the value safely in email or other
     non-binary environments."""
-    return self.digest().encode('hex')
+    return self.digest().hex()
 
   def copy(self):
     # First initialize whatever can be done normally
     duplicate = Keccak(c=self.c, r=self.r, n=self.n)
     # Then copy over the state.
-    for i in xrange(5):
-      for j in xrange(5):
+    for i in range(5):
+      for j in range(5):
         duplicate.S[i][j] = self.S[i][j]
     # and any other stored data
     duplicate.buffered_data = self.buffered_data
@@ -316,7 +319,10 @@ class Keccak:
 ## Generic utility functions
 
 def _build_message_pair(data):
-  hex_data = data.encode('hex')
+  if isinstance(data, bytes):
+      hex_data = data.hex()
+  else:
+      hex_data = data.encode('utf-8').hex()
   size = len(hex_data) * 4
   return (size, hex_data)
 
@@ -336,12 +342,12 @@ def _fromHexStringToLane(string):
 
   #Check that the string has an even number of characters i.e. whole number of bytes
   if len(string) % 2 != 0:
-    raise KeccakError.KeccakError("The provided string does not end with a full byte")
+    raise KeccakError("The provided string does not end with a full byte")
 
   #Perform the conversion
   temp = ''
   nrBytes = len(string) // 2
-  for i in xrange(nrBytes):
+  for i in range(nrBytes):
     offset = (nrBytes - i - 1) * 2
     temp += string[offset:offset + 2]
   return int(temp, 16)
@@ -354,7 +360,7 @@ def _fromLaneToHexString(lane, w):
   #Perform the conversion
   temp = ''
   nrBytes = len(laneHexBE) // 2
-  for i in xrange(nrBytes):
+  for i in range(nrBytes):
     offset = (nrBytes - i - 1) * 2
     temp += laneHexBE[offset:offset + 2]
   return temp.upper()
@@ -372,7 +378,7 @@ def _convertStrToTable(string, w, b):
   # Each character in the string represents 4 bits.
   # The string should have exactly 'b' bits.
   if len(string) * 4 != b:
-    raise KeccakError.KeccakError("string can't be divided in 25 blocks of w bits\
+    raise KeccakError("string can't be divided in 25 blocks of w bits\
     i.e. string must have exactly b bits")
 
   #Convert
@@ -383,8 +389,8 @@ def _convertStrToTable(string, w, b):
             [0, 0, 0, 0, 0]]
 
   bits_per_char = 2 * w // 8
-  for x in xrange(5):
-    for y in xrange(5):
+  for x in range(5):
+    for y in range(5):
       # Each entry will have b/25=w bits.
       offset = (5 * y + x) * bits_per_char
       # Store the data into the associated word.
@@ -398,14 +404,14 @@ def _convertTableToStr(table, w):
 
   #Check input format
   if w % 8 != 0:
-    raise KeccakError.KeccakError("w is not a multiple of 8")
+    raise KeccakError("w is not a multiple of 8")
   if (len(table) != 5) or any(len(row) != 5 for row in table):
-    raise KeccakError.KeccakError("table must be 5x5")
+    raise KeccakError("table must be 5x5")
 
   #Convert
   output = [''] * 25
-  for x in xrange(5):
-    for y in xrange(5):
+  for x in range(5):
+    for y in range(5):
       output[5 * y + x] = _fromLaneToHexString(table[x][y], w)
   output = ''.join(output).upper()
   return output
