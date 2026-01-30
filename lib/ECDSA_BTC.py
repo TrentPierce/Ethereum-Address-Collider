@@ -29,7 +29,12 @@ import base64
 import struct
 import hmac
 from ECDSA_256k1 import *
-import cPickle as pickle
+
+# Python 2/3 compatibility for pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 def load_gtable(filename):
     with open(filename, 'rb') as input:
@@ -67,8 +72,8 @@ class Signature( object ):
     self.pby = pby
 
   def encode(self):
-    sigr = binascii.unhexlify(("%064x" % self.r).encode())
-    sigs = binascii.unhexlify(("%064x" % self.s).encode())
+    sigr = binascii.unhexlify((\"%064x\" % self.r).encode())
+    sigs = binascii.unhexlify((\"%064x\" % self.s).encode())
     return sigr+sigs
 
 class Public_key( object ):
@@ -77,11 +82,11 @@ class Public_key( object ):
     self.point = point
     n = generator.order()
     if not n:
-      raise RuntimeError, "Generator point must have order."
+      raise RuntimeError("Generator point must have order.")
     if not n * point == INFINITY:
-      raise RuntimeError, "Generator point order is bad."
+      raise RuntimeError("Generator point order is bad.")
     if point.x() < 0 or n <= point.x() or point.y() < 0 or n <= point.y():
-      raise RuntimeError, "Generator point has x or y out of range."
+      raise RuntimeError("Generator point has x or y out of range.")
 
   def verifies( self, hashe, signature ):
     if self.point == INFINITY: return False
@@ -117,9 +122,9 @@ class Private_key( object ):
     n = G.order()
     p1 = mulG(k)
     r = p1.x()
-    if r == 0: raise RuntimeError, "amazingly unlucky random number r"
+    if r == 0: raise RuntimeError("amazingly unlucky random number r")
     s = ( inverse_mod( k, n ) * ( hash + ( self.secret_multiplier * r ) % n ) ) % n
-    if s == 0: raise RuntimeError, "amazingly unlucky random number s"
+    if s == 0: raise RuntimeError("amazingly unlucky random number s")
     if s > (n>>1): #Canonical Signature enforced (lower S)
         s = n - s
         pby = (p1.y()+1)&1
@@ -130,28 +135,28 @@ class Private_key( object ):
 def randoml(pointgen):
   cand = 0
   while cand<1 or cand>=pointgen.order():
-    cand=int(os.urandom(32).encode('hex'), 16)
+    cand=int(os.urandom(32).hex(), 16)
   return cand
 
 def gen_det_k(msg_hash,priv):
-    v = '\x01' * 32
-    k = '\x00' * 32
-    msghash = ''
-    for x in xrange(0,64,2):
+    v = b'\x01' * 32
+    k = b'\x00' * 32
+    msghash = b''
+    for x in range(0,64,2):
         msghash =  msghash + struct.pack('B',int(msg_hash[x:x+2],16))
     private = 1
-    priv    = binascii.unhexlify(("%064x" % private ).encode())
-    k = hmac.new(k, v+'\x00'+priv+msghash, hashlib.sha256).digest()
+    priv    = binascii.unhexlify((\"%064x\" % private ).encode())
+    k = hmac.new(k, v+b'\x00'+priv+msghash, hashlib.sha256).digest()
     v = hmac.new(k, v                    , hashlib.sha256).digest()
-    k = hmac.new(k, v+'\x01'+priv+msghash, hashlib.sha256).digest()
+    k = hmac.new(k, v+b'\x01'+priv+msghash, hashlib.sha256).digest()
     v = hmac.new(k, v                    , hashlib.sha256).digest()
     while True:
         v = hmac.new(k, v, hashlib.sha256).hexdigest()
         ksec = int(v,16)
-        if ksec >= 1 and ksec<0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141L:
+        if ksec >= 1 and ksec<0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141:
             break
-        k = hmac.new(k, v+'\x00'+priv+msghash, hashlib.sha256).digest()
-        v = hmac.new(k, v                    , hashlib.sha256).digest()
+        k = hmac.new(k, v.encode()+b'\x00'+priv+msghash, hashlib.sha256).digest()
+        v = hmac.new(k, v.encode()                    , hashlib.sha256).digest()
     return ksec
 
 def hash_msg(message):
@@ -159,7 +164,7 @@ def hash_msg(message):
     lenmsg=len(message)
     if lenmsg<253: lm = bytearray(struct.pack('B',lenmsg))
     else: lm = bytearray(struct.pack('B',253)+struct.pack('<H',lenmsg)) # up to 65k
-    full_msg = bytearray("\x18Bitcoin Signed Message:\n")+ lm + bytearray(message,'utf8')
+    full_msg = bytearray(b"\x18Bitcoin Signed Message:\n")+ lm + bytearray(message,'utf8')
     return dsha256(full_msg)
 
 def bitcoin_sign_message(privkey, hsmessage, k):
@@ -216,7 +221,7 @@ def bitcoin_verify_message(address, signature, message):
         lenmsg=len(message)
         if lenmsg<253: lm = bytearray(struct.pack('B',lenmsg))
         else: lm = bytearray(struct.pack('B',253)+struct.pack('<H',lenmsg)) # up to 65k
-        be = bytearray("\x18Bitcoin Signed Message:\n")+ lm + bytearray(message,'utf8')
+        be = bytearray(b"\x18Bitcoin Signed Message:\n")+ lm + bytearray(message,'utf8')
         inv_r = inverse_mod(r,order)    
         e = int(dsha256( be ),16)
         # Q = (sR - eG) / r
@@ -234,7 +239,6 @@ def bitcoin_verify_message(address, signature, message):
         #pubkey.verifies( e, Signature(0,r,s) )
         
         
-
 def decode_sig_msg(msg):
     msg=msg.replace("\r\n","\n")
     msglines=msg.split('\n')
@@ -253,11 +257,11 @@ if __name__ == '__main__' :
     import random
     import string
     load_gtable('G_Table')
-    print "Tests started"
-    print "\nDeterministic RFC6979 Checking"
+    print("Tests started")
+    print("\nDeterministic RFC6979 Checking")
     hmsg= hashlib.sha256(bytearray("Satoshi Nakamoto",'utf8')).hexdigest()
     k = gen_det_k( hmsg, 1 )
-    assert k == 0x8F8A276C19F4149656B280621E358CCE24F5F52542772691EE69063B74F15D15L
+    assert k == 0x8F8A276C19F4149656B280621E358CCE24F5F52542772691EE69063B74F15D15
     
     message_signed = \
     """-----BEGIN BITCOIN SIGNED MESSAGE-----
@@ -280,29 +284,29 @@ G+5z8qAYM6LekZeE8ruDs1R1egjedfQxz0q8ja+v9pvWQWGozoiToB6aemOdPAOh4OFVysBMNmhZhCyI
     
     address1, signature1, message1 = decode_sig_msg(message_signed)
     
-    print "\nSignature checking for validity"
+    print("\nSignature checking for validity")
     bitcoin_verify_message(address1, signature1, message1)
     
-    print "\nCheck with falsified message"
+    print("\nCheck with falsified message")
     message=change_car(message1, 231, "l")
     test_false_signature(address1, signature1, message)
     
-    print "\nCheck with falsified signature"
+    print("\nCheck with falsified signature")
     signature=change_car(signature1,42,"u")
     test_false_signature(address1, signature, message1)
     
-    print "\nCheck with falsified address"
+    print("\nCheck with falsified address")
     address = "1CVaUy7x8EA6wdnXCGkRChJASV4MAmje4g"
     test_false_signature(address, signature1, message1)
     
-    print "\nBatch sign & check of random keys and messages"
+    print("\nBatch sign & check of random keys and messages")
     maxend=500
     g=generator_256
-    random.seed(int(os.urandom(32).encode('hex'), 16))
-    for i in xrange(maxend):
-        print i+1, "/", maxend
+    random.seed(int(os.urandom(32).hex(), 16))
+    for i in range(maxend):
+        print(i+1, "/", maxend)
         secret = random.randint(1,g.order())
-        message = ''.join([random.choice(string.digits+string.letters+'    \n') for x in range(80)])
+        message = ''.join([random.choice(string.digits+string.ascii_letters+'    \n') for x in range(80)])
         try:
             pubkey = Public_key( g, mulG(secret) )
             privkey = Private_key( pubkey, secret )
@@ -319,11 +323,11 @@ G+5z8qAYM6LekZeE8ruDs1R1egjedfQxz0q8ja+v9pvWQWGozoiToB6aemOdPAOh4OFVysBMNmhZhCyI
             addr, sigd, msgd = decode_sig_msg(fullsig)
             bitcoin_verify_message(addr, sigd, msgd)
         except Exception as inst:
-            print "ERROR :",str(inst)
-            print message
-            print secret
-            print signature64
-            print address_pub
+            print("ERROR :",str(inst))
+            print(message)
+            print(secret)
+            print(signature64)
+            print(address_pub)
             raise
         
-    print "ALL TESTS PASSED !"
+    print("ALL TESTS PASSED !")
